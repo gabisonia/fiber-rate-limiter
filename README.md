@@ -11,6 +11,12 @@ Supports global, per-route and manual usage.
 
 ---
 
+## 🧑‍💻 Development
+- Run full suite (uses sandbox-friendly caches): `make test`
+- Fast inner loop without Fiber deps: `make test-strategies`
+- Add more strategies or middleware tests and keep them in `./strategies` and `./middleware`
+- Ensure new client metadata or headers are covered by tests before merging
+
 ## 📦 Installation
 
 ```bash

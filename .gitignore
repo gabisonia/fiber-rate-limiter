@@ -1,0 +1,10 @@
+# macOS metadata
+.DS_Store
+
+# JetBrains IDE configs
+.idea/
+.idea/vcs.xml
+
+# Go build caches (optional; useful for keeping repo clean)
+*.test
+bin/
