@@ -60,3 +60,35 @@ func (strategy *SlidingWindowStrategy) IsRequestAllowed(clientId string) bool {
 	strategy.clients[clientId] = timestamps
 	return false
 }
+
+// RetryAfter returns how long until the oldest timestamp expires and capacity frees up.
+func (strategy *SlidingWindowStrategy) RetryAfter(clientId string) time.Duration {
+	now := time.Now()
+	strategy.mutex.Lock()
+	defer strategy.mutex.Unlock()
+
+	timestamps := strategy.clients[clientId]
+	if len(timestamps) == 0 {
+		return 0
+	}
+
+	// refresh timestamps to drop stale entries
+	filtered := timestamps[:0]
+	for _, t := range timestamps {
+		if now.Sub(t) < strategy.WindowSize {
+			filtered = append(filtered, t)
+		}
+	}
+	strategy.clients[clientId] = filtered
+
+	if len(filtered) < strategy.Limit {
+		return 0
+	}
+
+	oldest := filtered[0]
+	wait := oldest.Add(strategy.WindowSize).Sub(now)
+	if wait < 0 {
+		return 0
+	}
+	return wait
+}

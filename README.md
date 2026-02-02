@@ -13,9 +13,11 @@ Supports global, per-route and manual usage.
 
 ## 🧑‍💻 Development
 - Run full suite (uses sandbox-friendly caches): `make test`
+- Force recompilation of all packages (ignores existing cache): `make test-nocache`
 - Fast inner loop without Fiber deps: `make test-strategies`
 - Add more strategies or middleware tests and keep them in `./strategies` and `./middleware`
 - Ensure new client metadata or headers are covered by tests before merging
+- Middleware now sets a `Retry-After` header (seconds) on 429 using strategy-provided timing so clients know when to retry; omitted when immediately retryable.
 
 ## 📦 Installation
 

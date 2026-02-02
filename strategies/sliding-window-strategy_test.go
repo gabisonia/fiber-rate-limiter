@@ -139,3 +139,22 @@ func TestSlidingWindowDropsOldest(t *testing.T) {
 		t.Fatal("after oldest dropped: expected allowed")
 	}
 }
+
+// RetryAfter should reflect time until capacity frees.
+func TestRetryAfter_SlidingWindow(t *testing.T) {
+	limit := 1
+	window := 40 * time.Millisecond
+	s := NewSlidingWindowStrategy(limit, window)
+	client := "userA"
+
+	if !s.IsRequestAllowed(client) {
+		t.Fatal("first request should be allowed")
+	}
+	if s.RetryAfter(client) <= 0 {
+		t.Fatal("expected positive retry-after when full")
+	}
+	time.Sleep(window + 5*time.Millisecond)
+	if s.RetryAfter(client) != 0 {
+		t.Fatal("expected zero retry-after after window slide")
+	}
+}

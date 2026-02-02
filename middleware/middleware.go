@@ -3,6 +3,7 @@ package middleware
 import (
 	"github.com/gabisonia/fiber-rate-limiter/strategies"
 	"github.com/gofiber/fiber/v2"
+	"strconv"
 )
 
 // RateLimitingMiddleware creates a Fiber middleware that applies rate limiting
@@ -22,6 +23,14 @@ func RateLimitingMiddleware(strategy strategies.RateLimitStrategy, clientIdResol
 		clientId := clientIdResolver(c)
 
 		if !strategy.IsRequestAllowed(clientId) {
+			if wait := strategy.RetryAfter(clientId); wait > 0 {
+				// Retry-After accepts seconds; round up to be conservative.
+				seconds := int64(wait.Seconds())
+				if wait.Seconds() > float64(seconds) {
+					seconds++
+				}
+				c.Set(fiber.HeaderRetryAfter, strconv.FormatInt(seconds, 10))
+			}
 			return c.Status(fiber.StatusTooManyRequests).SendString("Rate limit exceeded.")
 		}
 

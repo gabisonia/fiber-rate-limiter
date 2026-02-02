@@ -129,3 +129,16 @@ func TestPartialLeakAllowsNewRequest(t *testing.T) {
 		t.Fatal("after partial leak: expected allowed")
 	}
 }
+
+func TestRetryAfter_LeakyBucket(t *testing.T) {
+	bucketSize := 1.0
+	leakRate := 2.0 // leaks one request every 0.5s
+	s := NewLeakyBucketStrategy(leakRate, bucketSize)
+	client := "userA"
+
+	_ = s.IsRequestAllowed(client) // fill
+	time.Sleep(600 * time.Millisecond)
+	if s.RetryAfter(client) != 0 {
+		t.Fatal("expected zero retry-after after leak")
+	}
+}

@@ -147,3 +147,19 @@ func TestRefillDoesNotExceedBucketSize(t *testing.T) {
 		t.Fatalf("expected exactly %v tokens after refill cap, got %d", bucketSize, allowed)
 	}
 }
+
+func TestRetryAfter_TokenBucket(t *testing.T) {
+	bucketSize := 1.0
+	refillRate := 10.0 // 0.1s per token
+	s := NewTokenBucketStrategy(refillRate, bucketSize)
+	client := "userA"
+
+	_ = s.IsRequestAllowed(client) // consume the only token
+	if s.RetryAfter(client) <= 0 {
+		t.Fatal("expected positive retry-after when empty")
+	}
+	time.Sleep(150 * time.Millisecond)
+	if s.RetryAfter(client) != 0 {
+		t.Fatal("expected zero retry-after after refill")
+	}
+}

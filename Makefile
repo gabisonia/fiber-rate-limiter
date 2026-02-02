@@ -11,4 +11,8 @@ test:
 test-strategies:
 	GOCACHE=$(GOCACHE) GOPATH=$(GOPATH) GOMODCACHE=$(GOMODCACHE) $(GO) test ./strategies
 
-.PHONY: test test-strategies
+# Run full suite while forcing recompilation (does not disable cache, but ignores it).
+test-nocache:
+	GOCACHE=$(GOCACHE) GOPATH=$(GOPATH) GOMODCACHE=$(GOMODCACHE) $(GO) test -count=1 -a ./...
+
+.PHONY: test test-strategies test-nocache

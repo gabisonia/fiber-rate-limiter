@@ -137,3 +137,22 @@ func TestMultipleWindowRollovers(t *testing.T) {
 		time.Sleep(window + 5*time.Millisecond)
 	}
 }
+
+// RetryAfter should indicate remaining time in the current window.
+func TestRetryAfter_FixedWindow(t *testing.T) {
+	limit := 1
+	window := 40 * time.Millisecond
+	s := NewFixedWindowStrategy(limit, window)
+	client := "userA"
+
+	if !s.IsRequestAllowed(client) {
+		t.Fatal("first request should be allowed")
+	}
+	if s.RetryAfter(client) <= 0 {
+		t.Fatal("expected positive retry-after when over limit")
+	}
+	time.Sleep(window + 5*time.Millisecond)
+	if s.RetryAfter(client) != 0 {
+		t.Fatal("expected zero retry-after after window elapsed")
+	}
+}

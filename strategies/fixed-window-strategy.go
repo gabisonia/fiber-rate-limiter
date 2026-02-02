@@ -58,3 +58,24 @@ func (strategy *FixedWindowStrategy) IsRequestAllowed(clientId string) bool {
 
 	return false
 }
+
+// RetryAfter returns the remaining time in the current window before another
+// request would be allowed.
+func (strategy *FixedWindowStrategy) RetryAfter(clientId string) time.Duration {
+	now := time.Now()
+	strategy.mutex.Lock()
+	defer strategy.mutex.Unlock()
+
+	state, exists := strategy.clients[clientId]
+	if !exists {
+		return 0
+	}
+
+	// If the window has already rolled, allow immediately.
+	windowEnd := state.WindowStart.Add(strategy.WindowSize)
+	if now.After(windowEnd) {
+		return 0
+	}
+
+	return windowEnd.Sub(now)
+}

@@ -60,3 +60,33 @@ func (strategy *LeakyBucketStrategy) IsRequestAllowed(clientId string) bool {
 
 	return false
 }
+
+// RetryAfter returns how long until at least one slot becomes available.
+func (strategy *LeakyBucketStrategy) RetryAfter(clientId string) time.Duration {
+	now := time.Now()
+	strategy.mutex.Lock()
+	defer strategy.mutex.Unlock()
+
+	state, exists := strategy.clients[clientId]
+	if !exists {
+		return 0
+	}
+
+	elapsed := now.Sub(state.LastLeak).Seconds()
+	state.QueuedRequests = math.Max(0, state.QueuedRequests-(elapsed*strategy.LeakRate))
+	state.LastLeak = now
+
+	if state.QueuedRequests < strategy.BucketSize {
+		return 0
+	}
+	if strategy.LeakRate <= 0 {
+		return 0
+	}
+
+	needed := (state.QueuedRequests - strategy.BucketSize) + 1 // leak enough for one new slot
+	seconds := needed / strategy.LeakRate
+	if seconds < 0 {
+		return 0
+	}
+	return time.Duration(math.Ceil(seconds*1000)) * time.Millisecond
+}

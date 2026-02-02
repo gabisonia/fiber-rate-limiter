@@ -60,3 +60,33 @@ func (strategy *TokenBucketStrategy) IsRequestAllowed(clientId string) bool {
 
 	return false
 }
+
+// RetryAfter returns how long until at least one token is available.
+func (strategy *TokenBucketStrategy) RetryAfter(clientId string) time.Duration {
+	now := time.Now()
+	strategy.mutex.Lock()
+	defer strategy.mutex.Unlock()
+
+	state, exists := strategy.clients[clientId]
+	if !exists {
+		return 0
+	}
+
+	elapsed := now.Sub(state.LastRefill).Seconds()
+	state.Tokens = math.Min(strategy.BucketSize, state.Tokens+(elapsed*strategy.RefillRate))
+	state.LastRefill = now
+
+	if state.Tokens >= 1 {
+		return 0
+	}
+	if strategy.RefillRate <= 0 {
+		return 0
+	}
+
+	needed := 1 - state.Tokens
+	seconds := needed / strategy.RefillRate
+	if seconds < 0 {
+		return 0
+	}
+	return time.Duration(math.Ceil(seconds*1000)) * time.Millisecond
+}
