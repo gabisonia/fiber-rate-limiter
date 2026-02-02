@@ -117,3 +117,23 @@ func TestConcurrentMultipleUsers(t *testing.T) {
 		}
 	}
 }
+
+// Ensure the counter rolls over cleanly across multiple consecutive windows.
+func TestMultipleWindowRollovers(t *testing.T) {
+	limit := 2
+	window := 30 * time.Millisecond
+	s := NewFixedWindowStrategy(limit, window)
+	client := "userA"
+
+	for cycle := 0; cycle < 3; cycle++ {
+		for i := 0; i < limit; i++ {
+			if !s.IsRequestAllowed(client) {
+				t.Fatalf("cycle %d request %d: expected allowed", cycle+1, i+1)
+			}
+		}
+		if s.IsRequestAllowed(client) {
+			t.Fatalf("cycle %d over limit: expected denied", cycle+1)
+		}
+		time.Sleep(window + 5*time.Millisecond)
+	}
+}

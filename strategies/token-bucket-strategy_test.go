@@ -93,7 +93,7 @@ func TestConcurrentMultipleUsers_TokenBucket(t *testing.T) {
 	users := []string{"userA", "userB"}
 	var wg sync.WaitGroup
 	var mu sync.Mutex
-	results := map[string]float64{"alice": 0, "bob": 0}
+	results := make(map[string]float64, len(users))
 
 	for _, u := range users {
 		for i := 0; i < int(bucketSize*2); i++ {
@@ -114,5 +114,36 @@ func TestConcurrentMultipleUsers_TokenBucket(t *testing.T) {
 		if math.Abs(results[u]-bucketSize) > 0.0001 {
 			t.Errorf("user %q: expected %v allowed, got %v", u, bucketSize, results[u])
 		}
+	}
+}
+
+// Buckets should refill up to the configured maximum, but never exceed it.
+func TestRefillDoesNotExceedBucketSize(t *testing.T) {
+	bucketSize := 5.0
+	refillRate := 10.0
+	s := NewTokenBucketStrategy(refillRate, bucketSize)
+	client := "userA"
+
+	// drain the bucket
+	for i := 0; i < int(bucketSize); i++ {
+		if !s.IsRequestAllowed(client) {
+			t.Fatalf("drain %d: expected allowed", i+1)
+		}
+	}
+	if s.IsRequestAllowed(client) {
+		t.Fatal("expected deny after draining bucket")
+	}
+
+	// wait long enough to theoretically add 10 tokens; bucket should cap at bucketSize
+	time.Sleep(1 * time.Second)
+
+	allowed := 0
+	for i := 0; i < int(bucketSize)+2; i++ { // try a couple extra to detect overfill
+		if s.IsRequestAllowed(client) {
+			allowed++
+		}
+	}
+	if allowed != int(bucketSize) {
+		t.Fatalf("expected exactly %v tokens after refill cap, got %d", bucketSize, allowed)
 	}
 }

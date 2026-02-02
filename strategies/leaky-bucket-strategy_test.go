@@ -80,7 +80,7 @@ func TestConcurrentMultipleUsers_LeakyBucket(t *testing.T) {
 
 	users := []string{"userA", "userB"}
 	var wg sync.WaitGroup
-	results := map[string]float64{"alice": 0, "bob": 0}
+	results := make(map[string]float64, len(users))
 	var mu sync.Mutex
 
 	for _, u := range users {
@@ -102,5 +102,30 @@ func TestConcurrentMultipleUsers_LeakyBucket(t *testing.T) {
 		if results[u] != bucketSize {
 			t.Errorf("user %q: expected %v allowed, got %v", u, bucketSize, results[u])
 		}
+	}
+}
+
+// Partial leaking should free just enough capacity to admit new traffic.
+func TestPartialLeakAllowsNewRequest(t *testing.T) {
+	bucketSize := 3.0
+	s := NewLeakyBucketStrategy(0, bucketSize)
+	client := "userA"
+
+	// fill the bucket
+	for i := 0; i < int(bucketSize); i++ {
+		if !s.IsRequestAllowed(client) {
+			t.Fatalf("prefill %d: expected allowed", i+1)
+		}
+	}
+	if s.IsRequestAllowed(client) {
+		t.Fatal("bucket should be full")
+	}
+
+	// now start leaking and wait ~0.6s → roughly 1.2 requests leak out
+	s.LeakRate = 2.0
+	time.Sleep(600 * time.Millisecond)
+
+	if !s.IsRequestAllowed(client) {
+		t.Fatal("after partial leak: expected allowed")
 	}
 }

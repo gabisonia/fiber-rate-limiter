@@ -114,3 +114,28 @@ func TestConcurrentMultipleUsers_SlidingWindow(t *testing.T) {
 		}
 	}
 }
+
+// The oldest timestamp should slide out, freeing capacity without waiting for a full window reset.
+func TestSlidingWindowDropsOldest(t *testing.T) {
+	limit := 3
+	window := 60 * time.Millisecond
+	s := NewSlidingWindowStrategy(limit, window)
+	client := "userA"
+
+	// fill the window
+	for i := 0; i < limit; i++ {
+		if !s.IsRequestAllowed(client) {
+			t.Fatalf("prime %d: expected allowed", i+1)
+		}
+	}
+	if s.IsRequestAllowed(client) {
+		t.Fatal("extra request should be denied while window still full")
+	}
+
+	// wait just long enough for the first timestamp to age out
+	time.Sleep(70 * time.Millisecond)
+
+	if !s.IsRequestAllowed(client) {
+		t.Fatal("after oldest dropped: expected allowed")
+	}
+}
